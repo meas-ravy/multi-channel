@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 
@@ -23,6 +24,8 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 export default async function DashboardPage() {
+  await connection();
+
   const prisma = getPrisma();
   const [pages, automations, eventGroups, recentEvents] = await Promise.all([
     prisma.facebookPage.findMany({
