@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireAdminSession } from "@/lib/admin-session";
 import { getPrisma } from "@/lib/prisma";
 
 function text(formData: FormData, name: string, maximumLength: number): string {
@@ -37,8 +36,6 @@ function priority(formData: FormData): number {
 }
 
 export async function createAutomation(formData: FormData): Promise<void> {
-  await requireAdminSession();
-
   const prisma = getPrisma();
   const facebookPageId = text(formData, "facebookPageId", 100);
   const page = await prisma.facebookPage.findUnique({
@@ -68,8 +65,6 @@ export async function updateAutomation(
   automationId: string,
   formData: FormData,
 ): Promise<void> {
-  await requireAdminSession();
-
   const prisma = getPrisma();
   await prisma.automation.update({
     where: { id: automationId },
@@ -86,8 +81,6 @@ export async function updateAutomation(
 }
 
 export async function toggleAutomation(automationId: string): Promise<void> {
-  await requireAdminSession();
-
   const prisma = getPrisma();
   const automation = await prisma.automation.findUniqueOrThrow({
     where: { id: automationId },

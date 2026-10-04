@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { requireAdminSession } from "@/lib/admin-session";
 import { getPrisma } from "@/lib/prisma";
 
 import {
@@ -24,8 +23,6 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 export default async function DashboardPage() {
-  await requireAdminSession();
-
   const prisma = getPrisma();
   const [pages, automations, eventGroups, recentEvents] = await Promise.all([
     prisma.facebookPage.findMany({
@@ -75,11 +72,6 @@ export default async function DashboardPage() {
               <p className="text-xs text-zinc-500">Facebook control center</p>
             </div>
           </div>
-          <form action="/api/admin/logout" method="post">
-            <button className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50">
-              Sign out
-            </button>
-          </form>
         </div>
       </header>
 
