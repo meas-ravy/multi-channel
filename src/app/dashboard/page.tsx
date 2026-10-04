@@ -89,12 +89,20 @@ export default async function DashboardPage() {
               Connect Pages, manage keyword rules, and monitor webhook activity.
             </p>
           </div>
-          <Link
-            href="/facebook"
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700"
-          >
-            Connect Facebook account
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/dashboard/flows"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
+            >
+              Open flow builder
+            </Link>
+            <Link
+              href="/facebook"
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700"
+            >
+              Connect Facebook account
+            </Link>
+          </div>
         </div>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
