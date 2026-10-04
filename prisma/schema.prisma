@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AutomationTrigger {
+  MESSAGE
+  COMMENT
+}
+
+enum WebhookEventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  IGNORED
+  FAILED
+}
+
+model FacebookPage {
+  id                   String   @id @default(cuid())
+  metaPageId           String   @unique @map("meta_page_id")
+  name                 String
+  accessTokenEncrypted String   @db.Text @map("access_token_encrypted")
+  tasks                String[] @default([])
+  connectedAt          DateTime @default(now()) @map("connected_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  automations          Automation[]
+  webhookEvents        WebhookEvent[]
+
+  @@map("facebook_pages")
+}
+
+model Automation {
+  id             String            @id @default(cuid())
+  facebookPageId String            @map("facebook_page_id")
+  name           String
+  trigger        AutomationTrigger
+  keyword        String
+  replyText      String            @db.Text @map("reply_text")
+  isActive       Boolean           @default(true) @map("is_active")
+  priority       Int               @default(0)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  facebookPage   FacebookPage      @relation(fields: [facebookPageId], references: [id], onDelete: Cascade)
+
+  @@index([facebookPageId, trigger, isActive])
+  @@map("automations")
+}
+
+model WebhookEvent {
+  id             String             @id @default(cuid())
+  eventKey       String             @unique @map("event_key")
+  metaPageId     String             @map("meta_page_id")
+  facebookPageId String?            @map("facebook_page_id")
+  eventType      AutomationTrigger  @map("event_type")
+  payload        Json
+  status         WebhookEventStatus @default(RECEIVED)
+  error          String?            @db.Text
+  receivedAt     DateTime           @default(now()) @map("received_at")
+  processedAt    DateTime?          @map("processed_at")
+  facebookPage   FacebookPage?      @relation(fields: [facebookPageId], references: [id], onDelete: SetNull)
+
+  @@index([metaPageId, receivedAt])
+  @@index([status, receivedAt])
+  @@map("webhook_events")
+}
