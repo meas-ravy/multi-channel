@@ -70,11 +70,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }),
     );
 
-    const response = redirectWithStatus(
-      request,
-      "connected",
-      String(selectedPages.length),
-    );
+    const dashboardUrl = new URL("/dashboard", request.url);
+    dashboardUrl.searchParams.set("connected", String(selectedPages.length));
+    const response = NextResponse.redirect(dashboardUrl, 303);
     response.cookies.delete(META_USER_TOKEN_COOKIE);
     return response;
   } catch (error) {

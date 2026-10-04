@@ -85,7 +85,7 @@ Meta, so local testing requires a trusted HTTPS tunnel or a deployed preview.
 3. Select **Connect Facebook account**.
 4. Approve access to the Pages managed by the account.
 5. Select one or more Pages on the application Page-selection screen.
-6. Confirm that the app returns to `/facebook` with a connected message.
+6. Confirm that the app returns to `/dashboard` with the selected Pages.
 
 The callback exchanges the authorization code on the server and temporarily
 keeps the encrypted long-lived user token in an HTTP-only cookie. The Page
