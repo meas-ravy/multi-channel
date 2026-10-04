@@ -1,7 +1,8 @@
 # Meta app setup
 
-This project uses a server-side Facebook OAuth flow to connect Facebook Pages.
-The application stores only Page access tokens, encrypted with AES-256-GCM.
+This project uses a server-side Facebook OAuth flow to connect a Facebook
+account and then select which managed Pages to use. The application stores only
+selected Page access tokens, encrypted with AES-256-GCM.
 
 ## 1. Create the Meta app
 
@@ -81,14 +82,16 @@ Meta, so local testing requires a trusted HTTPS tunnel or a deployed preview.
 
 1. Start the application with `npm run dev`.
 2. Open `http://localhost:3000/facebook`.
-3. Select **Connect Facebook**.
-4. Approve one or more Pages.
-5. Confirm that the app returns to `/facebook` with a connected message.
+3. Select **Connect Facebook account**.
+4. Approve access to the Pages managed by the account.
+5. Select one or more Pages on the application Page-selection screen.
+6. Confirm that the app returns to `/facebook` with a connected message.
 
-The callback exchanges the authorization code on the server, requests a
-long-lived user token, obtains Page access tokens from `/me/accounts`, encrypts
-them, subscribes each Page to the configured webhook fields, and upserts the
-selected Pages. It does not store the user token.
+The callback exchanges the authorization code on the server and temporarily
+keeps the encrypted long-lived user token in an HTTP-only cookie. The Page
+selection screen obtains the managed Pages from `/me/accounts`. After the user
+submits a selection, the application subscribes and stores only those Pages,
+then deletes the temporary user-token cookie.
 
 Create keyword rules after connecting the Page by following
 [`automation-rules.md`](./automation-rules.md).

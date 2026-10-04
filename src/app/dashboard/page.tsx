@@ -93,7 +93,7 @@ export default async function DashboardPage() {
             href="/facebook"
             className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-700"
           >
-            Connect Facebook Page
+            Connect Facebook account
           </Link>
         </div>
 

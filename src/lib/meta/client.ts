@@ -11,6 +11,8 @@ export const META_PAGE_SCOPES = [
   "pages_messaging",
 ] as const;
 
+export const META_USER_TOKEN_COOKIE = "meta_user_token";
+
 type TokenResponse = {
   access_token: string;
   expires_in?: number;

@@ -6,10 +6,8 @@ import { NextResponse } from "next/server";
 import {
   exchangeCodeForUserToken,
   exchangeForLongLivedToken,
-  getManagedPages,
-  subscribePageToWebhooks,
+  META_USER_TOKEN_COOKIE,
 } from "@/lib/meta/client";
-import { getPrisma } from "@/lib/prisma";
 import { encryptSecret } from "@/lib/security/encryption";
 
 export const runtime = "nodejs";
@@ -28,7 +26,7 @@ function statesMatch(received: string, expected: string): boolean {
 
 function redirectWithStatus(
   request: NextRequest,
-  status: "connected" | "error",
+  status: "connected" | "error" | "select_pages",
   detail?: string,
 ): NextResponse {
   const url = new URL("/facebook", request.url);
@@ -39,7 +37,10 @@ function redirectWithStatus(
   }
 
   const response = NextResponse.redirect(url);
-  response.cookies.delete(OAUTH_STATE_COOKIE);
+  response.cookies.set(OAUTH_STATE_COOKIE, "", {
+    maxAge: 0,
+    path: "/api/meta",
+  });
   return response;
 }
 
@@ -58,39 +59,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const prisma = getPrisma();
     const shortLivedToken = await exchangeCodeForUserToken(code);
     const longLivedToken = await exchangeForLongLivedToken(
       shortLivedToken.access_token,
     );
-    const pages = await getManagedPages(longLivedToken.access_token);
-
-    if (pages.length === 0) {
-      return redirectWithStatus(request, "error", "no_pages_selected");
-    }
-
-    for (const page of pages) {
-      await subscribePageToWebhooks(page.id, page.access_token);
-    }
-
-    await prisma.$transaction(
-      pages.map((page) => {
-        const data = {
-          name: page.name,
-          accessTokenEncrypted: encryptSecret(page.access_token),
-          tasks: page.tasks ?? [],
-          connectedAt: new Date(),
-        };
-
-        return prisma.facebookPage.upsert({
-          where: { metaPageId: page.id },
-          create: { metaPageId: page.id, ...data },
-          update: data,
-        });
-      }),
+    const response = redirectWithStatus(request, "select_pages");
+    response.cookies.set(
+      META_USER_TOKEN_COOKIE,
+      encryptSecret(longLivedToken.access_token),
+      {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 10 * 60,
+        path: "/",
+      },
     );
-
-    return redirectWithStatus(request, "connected", String(pages.length));
+    return response;
   } catch (error) {
     console.error("Meta OAuth callback failed", error);
     return redirectWithStatus(request, "error", "connection_failed");

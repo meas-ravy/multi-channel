@@ -2,7 +2,10 @@ import { randomBytes } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
-import { buildMetaAuthorizationUrl } from "@/lib/meta/client";
+import {
+  buildMetaAuthorizationUrl,
+  META_USER_TOKEN_COOKIE,
+} from "@/lib/meta/client";
 
 export const runtime = "nodejs";
 
@@ -20,6 +23,7 @@ export async function GET(): Promise<NextResponse> {
       maxAge: 10 * 60,
       path: "/api/meta",
     });
+    response.cookies.delete(META_USER_TOKEN_COOKIE);
 
     return response;
   } catch (error) {
