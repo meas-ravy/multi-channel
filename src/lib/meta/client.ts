@@ -191,6 +191,31 @@ export async function sendMessengerText(
   );
 }
 
+export async function sendMessengerQuickReplies(
+  pageId: string,
+  recipientId: string,
+  text: string,
+  replies: { title: string; payload: string }[],
+  pageAccessToken: string,
+): Promise<void> {
+  await postToGraph(
+    `${pageId}/messages`,
+    pageAccessToken,
+    {
+      recipient: { id: recipientId },
+      messaging_type: "RESPONSE",
+      message: {
+        text,
+        quick_replies: replies.map((reply) => ({
+          content_type: "text",
+          title: reply.title.slice(0, 20),
+          payload: reply.payload,
+        })),
+      },
+    },
+  );
+}
+
 export async function replyToComment(
   commentId: string,
   text: string,

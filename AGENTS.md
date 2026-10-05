@@ -25,5 +25,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Preserve existing behavior and styling unless the user explicitly requests a change.
 - Do not add speculative abstractions, dependencies, platforms, or AI integrations.
 - Never commit secrets, access tokens, app secrets, or real credentials. Document required values in `.env.example` with placeholders.
-- Ask before running database migrations, resets, destructive commands, or production deployments.
+- When database changes are required, edit only `prisma/schema.prisma`. Never add, edit, rename, or delete files or folders inside `prisma/migrations/`.
+- Never run database migration commands. The user creates and runs all Prisma migrations themselves.
+- Ask before running database resets, destructive commands, or production deployments.
 - After editing, inspect the diff and run the smallest relevant lint, type-check, or test command. Clearly report anything not verified.

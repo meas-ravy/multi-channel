@@ -3,6 +3,7 @@ import { replyToComment, sendMessengerText } from "@/lib/meta/client";
 import type { NormalizedWebhookEvent } from "@/lib/meta/webhook";
 import { getPrisma } from "@/lib/prisma";
 import { decryptSecret } from "@/lib/security/encryption";
+import { executeMessengerFlow } from "@/lib/automation/flow-runtime";
 
 function findMatchingRule<
   T extends { keyword: string; replyText: string },
@@ -43,6 +44,9 @@ async function processEvent(event: NormalizedWebhookEvent): Promise<void> {
     const page = await prisma.facebookPage.findUnique({
       where: { metaPageId: event.metaPageId },
       include: {
+        messengerFlow: {
+          select: { id: true, published: true },
+        },
         automations: {
           where: { isActive: true, trigger: event.type },
           orderBy: [{ priority: "desc" }, { createdAt: "asc" }],
@@ -67,6 +71,19 @@ async function processEvent(event: NormalizedWebhookEvent): Promise<void> {
       data: { facebookPageId: page.id },
     });
 
+    const pageAccessToken = decryptSecret(page.accessTokenEncrypted);
+
+    if (
+      event.type === "MESSAGE" &&
+      await executeMessengerFlow(prisma, event, page, pageAccessToken)
+    ) {
+      await prisma.webhookEvent.update({
+        where: { id: webhookEvent.id },
+        data: { status: "PROCESSED", processedAt: new Date() },
+      });
+      return;
+    }
+
     const rule = findMatchingRule(event.text, page.automations);
 
     if (!rule) {
@@ -76,8 +93,6 @@ async function processEvent(event: NormalizedWebhookEvent): Promise<void> {
       });
       return;
     }
-
-    const pageAccessToken = decryptSecret(page.accessTokenEncrypted);
 
     if (event.type === "MESSAGE") {
       await sendMessengerText(

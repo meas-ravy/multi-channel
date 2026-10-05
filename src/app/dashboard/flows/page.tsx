@@ -1,8 +1,30 @@
 import Link from "next/link";
+import { connection } from "next/server";
+
+import { parseFlowDocument } from "@/lib/automation/flow-types";
+import { getPrisma } from "@/lib/prisma";
 
 import FlowBuilder from "./FlowBuilder";
 
-export default function FlowBuilderPage() {
+export default async function FlowBuilderPage() {
+  await connection();
+  const pages = await getPrisma().facebookPage.findMany({
+    select: {
+      id: true,
+      name: true,
+      messengerFlow: {
+        select: { draft: true, publishedAt: true },
+      },
+    },
+    orderBy: { connectedAt: "desc" },
+  });
+  const initialPages = pages.map((page) => ({
+    id: page.id,
+    name: page.name,
+    draft: parseFlowDocument(page.messengerFlow?.draft) ?? undefined,
+    publishedAt: page.messengerFlow?.publishedAt?.toISOString() ?? null,
+  }));
+
   return (
     <main className="min-h-screen bg-zinc-100 text-zinc-950">
       <header className="border-b border-zinc-200 bg-white">
@@ -19,7 +41,7 @@ export default function FlowBuilderPage() {
           </Link>
         </div>
       </header>
-      <FlowBuilder />
+      <FlowBuilder pages={initialPages} />
     </main>
   );
 }

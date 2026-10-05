@@ -261,7 +261,7 @@ export default async function DashboardPage() {
             </div>
             {recentEvents.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[680px] text-left text-sm">
+                <table className="w-full min-w-170 text-left text-sm">
                   <thead className="bg-zinc-50 text-xs font-medium uppercase tracking-wide text-zinc-500">
                     <tr>
                       <th className="px-5 py-3">Event</th>

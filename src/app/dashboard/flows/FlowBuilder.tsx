@@ -18,27 +18,19 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState, useTransition } from "react";
+
+import type {
+  FlowDocument,
+  FlowNodeData as BotNodeData,
+  FlowNodeKind as BotNodeKind,
+} from "@/lib/automation/flow-types";
+
+import { publishFlow, saveFlow as saveFlowAction } from "./actions";
 
 import "@xyflow/react/dist/style.css";
 
-type BotNodeKind = "start" | "message" | "ai" | "quickReply";
-
-type BotNodeData = {
-  label: string;
-  content: string;
-  options: string;
-};
-
 type BotNode = Node<BotNodeData, BotNodeKind>;
-
-type SavedFlow = {
-  version: 1;
-  nodes: BotNode[];
-  edges: Edge[];
-};
-
-const STORAGE_KEY = "chart-automation:flow-builder:v1";
 
 const INITIAL_NODES: BotNode[] = [
   {
@@ -223,9 +215,13 @@ function QuickReplyNodeCard({ data, selected }: NodeProps<BotNode>) {
           ))}
         </div>
       </div>
-      <div className="relative border-t border-dashed border-zinc-200 px-5 py-3 text-right text-xs font-medium text-zinc-600">
-        Compose next message
-        <SourceHandle id="next" top="50%" />
+      <div className="border-t border-dashed border-zinc-200 px-5 py-3 text-xs font-medium text-zinc-600">
+        {options.length > 0 ? options.map((option, index) => (
+          <div key={`${option}-${index}`} className="relative py-1 text-right">
+            {option}
+            <SourceHandle id={`option:${index}`} top={`${((index + 1) / (options.length + 1)) * 100}%`} />
+          </div>
+        )) : <p className="text-right">Add an option</p>}
       </div>
     </NodeShell>
   );
@@ -265,28 +261,31 @@ function newNode(kind: Exclude<BotNodeKind, "start">, index: number): BotNode {
   };
 }
 
-export default function FlowBuilder() {
-  const [nodes, setNodes, onNodesChange] = useNodesState<BotNode>(INITIAL_NODES);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(INITIAL_EDGES);
+type FlowPage = {
+  id: string;
+  name: string;
+  draft?: FlowDocument;
+  publishedAt: string | null;
+};
+
+function pageFlow(page: FlowPage | undefined): { nodes: BotNode[]; edges: Edge[] } {
+  return page?.draft
+    ? { nodes: page.draft.nodes as BotNode[], edges: page.draft.edges as Edge[] }
+    : { nodes: INITIAL_NODES, edges: INITIAL_EDGES };
+}
+
+export default function FlowBuilder({ pages }: { pages: FlowPage[] }) {
+  const firstPage = pages[0];
+  const initial = pageFlow(firstPage);
+  const [pageId, setPageId] = useState(firstPage?.id ?? "");
+  const [nodes, setNodes, onNodesChange] = useNodesState<BotNode>(initial.nodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initial.edges);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [saveStatus, setSaveStatus] = useState("Saved locally");
-
-  useEffect(() => {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return;
-    }
-
-    try {
-      const saved = JSON.parse(raw) as SavedFlow;
-      if (saved.version === 1 && Array.isArray(saved.nodes) && Array.isArray(saved.edges)) {
-        setNodes(saved.nodes);
-        setEdges(saved.edges);
-      }
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-    }
-  }, [setEdges, setNodes]);
+  const [saveStatus, setSaveStatus] = useState(firstPage?.draft ? "Draft loaded" : "New draft");
+  const [savedFlows, setSavedFlows] = useState<Record<string, FlowDocument>>(() =>
+    Object.fromEntries(pages.flatMap((page) => page.draft ? [[page.id, page.draft]] : [])),
+  );
+  const [isPending, startTransition] = useTransition();
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -361,11 +360,36 @@ export default function FlowBuilder() {
     setSaveStatus("Unsaved changes");
   }, [selectedNodeId, setEdges, setNodes]);
 
-  const saveFlow = useCallback(() => {
-    const payload: SavedFlow = { version: 1, nodes, edges };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    setSaveStatus("Saved locally");
-  }, [edges, nodes]);
+  const document = useCallback(
+    (): FlowDocument => ({ version: 1, nodes, edges }),
+    [edges, nodes],
+  );
+
+  const selectPage = useCallback((nextPageId: string) => {
+    const page = pages.find((item) => item.id === nextPageId);
+    const next = pageFlow(page ? { ...page, draft: savedFlows[nextPageId] } : undefined);
+    setPageId(nextPageId);
+    setNodes(next.nodes);
+    setEdges(next.edges);
+    setSelectedNodeId(null);
+    setSaveStatus("Draft loaded");
+  }, [pages, savedFlows, setEdges, setNodes]);
+
+  const persist = useCallback((publish: boolean) => {
+    if (!pageId) return;
+    setSaveStatus(publish ? "Publishing…" : "Saving…");
+    startTransition(async () => {
+      try {
+        const flow = document();
+        if (publish) await publishFlow(pageId, flow);
+        else await saveFlowAction(pageId, flow);
+        setSavedFlows((current) => ({ ...current, [pageId]: flow }));
+        setSaveStatus(publish ? "Published" : "Draft saved");
+      } catch (error) {
+        setSaveStatus(error instanceof Error ? error.message : "Unable to save flow");
+      }
+    });
+  }, [document, pageId]);
 
   const selectedNode = nodes.find((node) => node.id === selectedNodeId);
 
@@ -413,21 +437,25 @@ export default function FlowBuilder() {
 
       <aside className="overflow-y-auto border-t border-zinc-200 bg-white p-5 lg:border-l lg:border-t-0">
         <div className="flex items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">Flow settings</p>
             <p className="mt-1 text-xs text-zinc-500">{saveStatus}</p>
           </div>
-          <button
-            onClick={saveFlow}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-          >
-            Save
-          </button>
+          <div className="flex gap-2">
+            <button disabled={!pageId || isPending} onClick={() => persist(false)} className="rounded-lg border border-zinc-300 px-3 py-2 text-xs font-semibold text-zinc-700 disabled:opacity-50">Save draft</button>
+            <button disabled={!pageId || isPending} onClick={() => persist(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">Publish</button>
+          </div>
         </div>
 
-        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">
-          This version saves the visual flow in this browser. Meta execution and
-          AI providers are not connected yet.
+        <label className="mt-5 block text-xs font-medium text-zinc-700">
+          Facebook Page
+          <select value={pageId} onChange={(event) => selectPage(event.target.value)} className="input mt-2" disabled={pages.length === 0}>
+            {pages.length === 0 ? <option value="">Connect a Page first</option> : pages.map((page) => <option key={page.id} value={page.id}>{page.name}</option>)}
+          </select>
+        </label>
+
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-800">
+          Save keeps a draft. Publish activates this flow for incoming Messenger messages. AI nodes are not available yet.
         </div>
 
         {selectedNode ? (

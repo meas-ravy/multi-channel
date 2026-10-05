@@ -73,3 +73,18 @@ events are deduplicated in `webhook_events`. Messenger text events match
 Messenger replies use the `RESPONSE` messaging type and must remain within
 Meta's allowed messaging window. The processor ignores Page-authored Messenger
 echoes and Page-authored comments to prevent reply loops.
+
+## Publish a Messenger flow
+
+Open `/dashboard/flows`, select a connected Facebook Page, build the flow, and
+choose **Publish**. Drafts are stored in PostgreSQL but do not affect users.
+Only the published version is executed.
+
+When a Page has a published flow, that flow handles incoming Messenger text
+before the older Messenger keyword rules. Message nodes send their text and
+continue to the next connected node. Quick reply nodes pause the conversation;
+each option can be connected to a different next node. The selected option is
+stored per Page and Messenger sender so the webhook can resume the flow.
+
+AI nodes remain editor-only and cannot be published until an AI provider is
+connected. Comment rules are separate and are not changed by Messenger flows.

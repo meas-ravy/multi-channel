@@ -10,6 +10,7 @@ type MessengerEvent = {
     mid?: string;
     text?: string;
     is_echo?: boolean;
+    quick_reply?: { payload?: string };
   };
 };
 
@@ -48,6 +49,7 @@ export type NormalizedWebhookEvent =
   | (BaseEvent & {
       type: "MESSAGE";
       recipientId: string;
+      quickReplyPayload?: string;
     })
   | (BaseEvent & {
       type: "COMMENT";
@@ -111,6 +113,7 @@ export function normalizeWebhookPayload(
         metaPageId,
         senderId,
         recipientId,
+        quickReplyPayload: messaging.message?.quick_reply?.payload,
         text,
         payload: messaging as Record<string, unknown>,
       });

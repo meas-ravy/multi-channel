@@ -30,8 +30,36 @@ model FacebookPage {
   updatedAt            DateTime @updatedAt @map("updated_at")
   automations          Automation[]
   webhookEvents        WebhookEvent[]
+  messengerFlow        MessengerFlow?
+  messengerSessions    MessengerSession[]
 
   @@map("facebook_pages")
+}
+
+model MessengerFlow {
+  id             String       @id @default(cuid())
+  facebookPageId String       @unique @map("facebook_page_id")
+  draft          Json
+  published      Json?
+  publishedAt    DateTime?    @map("published_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  facebookPage   FacebookPage @relation(fields: [facebookPageId], references: [id], onDelete: Cascade)
+
+  @@map("messenger_flows")
+}
+
+model MessengerSession {
+  id             String       @id @default(cuid())
+  facebookPageId String       @map("facebook_page_id")
+  senderId       String       @map("sender_id")
+  waitingNodeId  String?      @map("waiting_node_id")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  facebookPage   FacebookPage @relation(fields: [facebookPageId], references: [id], onDelete: Cascade)
+
+  @@unique([facebookPageId, senderId])
+  @@map("messenger_sessions")
 }
 
 model Automation {
